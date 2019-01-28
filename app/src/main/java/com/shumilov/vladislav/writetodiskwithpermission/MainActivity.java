@@ -3,14 +3,17 @@ package com.shumilov.vladislav.writetodiskwithpermission;
 import android.Manifest;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -22,20 +25,26 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.Observable;
+import java.util.Observer;
+
+public class MainActivity extends AppCompatActivity implements Observer {
 
     private static final int WRITE_EXTERNAL_REQUEST_CODE = 123;
+    private static final String IMAGE_KEY = "IMAGE_KEY";
+    private static final String DOWNLOAD_IMAGE_REF_ID = "DOWNLOAD_IMAGE_REF_ID";
 
     private EditText mImageUrlEditView;
-    private Button mUploadImageButton;
+    private Button mDownloadImageButton;
     private Button mShowImageButton;
     private ImageView mPictureImageView;
 
-    private Long mRefId;
-    private String mFileName;
+    private Long mDownloadedImageRefId;
 
-    private DownloadManager mDownloadManager;
-    private ImageHelper mImageHelper = new ImageHelper();
+    private ImageService mImageService;
+    private Image mImage = new Image();
+    private boolean mBound = false;
+    private Handler mHandler = new Handler();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +57,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
+        Intent intent = new Intent(this, ImageService.class);
+        startService(intent);
+        bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
 
         registerReceiver(mOnCompleteDownloadImage, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
     }
@@ -63,22 +76,46 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
 
+        if (mBound) {
+            unbindService(mServiceConnection);
+            mBound = false;
+        }
+
         unregisterReceiver(mOnCompleteDownloadImage);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+
+        outState.putLong(DOWNLOAD_IMAGE_REF_ID, mDownloadedImageRefId);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        if (savedInstanceState == null) {
+            return;
+        }
+
+        mDownloadedImageRefId = savedInstanceState.getLong(DOWNLOAD_IMAGE_REF_ID);
+
+        onImageChanged();
     }
 
     private void initWidgets() {
         mImageUrlEditView = findViewById(R.id.evImageUrl);
-        mUploadImageButton = findViewById(R.id.btnUploadImage);
+        mDownloadImageButton = findViewById(R.id.btnDownloadImage);
         mShowImageButton = findViewById(R.id.btnShowImage);
         mPictureImageView = findViewById(R.id.ivPicture);
-
-        mDownloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
     }
 
     private void initListeners() {
-        mUploadImageButton.setOnClickListener(new View.OnClickListener() {
+        mDownloadImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                mShowImageButton.setEnabled(false);
                 downloadPicture();
             }
         });
@@ -129,35 +166,59 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void doDownloadPicture() {
-        String imageUrl = mImageUrlEditView.getText().toString();
-
-        if (!mImageHelper.isImageUrl(imageUrl)) {
-            Toast.makeText(this, R.string.set_image_url_message, Toast.LENGTH_SHORT).show();
+        if (!mBound) {
             return;
         }
 
-        mFileName = mImageHelper.getFileSimpleNameForUrl(imageUrl);
+        String imageUrl = mImageUrlEditView.getText().toString();
 
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(imageUrl));
-        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
-        request.setAllowedOverRoaming(false);
-        request.setTitle(getString(R.string.download_image_title));
-        request.setDescription(getString(R.string.picture) + " " + mFileName);
-        request.setVisibleInDownloadsUi(true);
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "/" + getString(R.string.app_name) + "/" + mFileName);
-
-        mRefId = mDownloadManager.enqueue(request);
+        mImageService.downloadImage(imageUrl);
     }
 
     BroadcastReceiver mOnCompleteDownloadImage = new BroadcastReceiver() {
 
         public void onReceive(Context ctxt, Intent intent) {
-            long referenceId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+            mDownloadedImageRefId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
 
-            if (mRefId == referenceId) {
-                mShowImageButton.setVisibility(View.VISIBLE);
-                Toast.makeText(MainActivity.this, getString(R.string.image_downloaded, mFileName), Toast.LENGTH_LONG).show();
+            if (mImage.getRequestId() != null && mImage.getRequestId().equals(mDownloadedImageRefId)) {
+                onImageChanged();
+                Toast.makeText(MainActivity.this, getString(R.string.image_downloaded, mImage.getName()), Toast.LENGTH_LONG).show();
             }
         }
     };
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            ImageService.ImageBinder binder = (ImageService.ImageBinder) service;
+            mImageService = binder.getService();
+            mImage = mImageService.getImage();
+            mImage.addObserver(MainActivity.this);
+            mDownloadImageButton.setEnabled(true);
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mBound = false;
+        }
+    };
+
+    @Override
+    public void update(Observable observable, Object arg) {
+        if (!(observable instanceof Image)) {
+            return;
+        }
+
+        onImageChanged();
+    }
+
+    private void onImageChanged() {
+        if (mImage.getRequestId() != null && mImage.getRequestId().equals(mDownloadedImageRefId)) {
+            mShowImageButton.setEnabled(true);
+            return;
+        }
+
+        mShowImageButton.setEnabled(false);
+    }
 }

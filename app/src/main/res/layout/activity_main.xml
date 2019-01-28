@@ -18,10 +18,11 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/btnUploadImage"
+        android:id="@+id/btnDownloadImage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/upload_image"/>
+        android:text="@string/upload_image"
+        android:enabled="false"/>
 
     <Button
         android:id="@+id/btnShowImage"
