@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">WriteToDiskWithPermission</string>
+    <string name="enter_url_hint">Введите url картинки</string>
+    <string name="upload_image">Загрузить файл</string>
+    <string name="show_image">Показать картинку</string>
+    <string name="external_storage_rationale_description">Запрос на запись во внешнее хранилище нужен для сохранения картинки в папку Загрузки</string>
+    <string name="agree">Понятно</string>
+    <string name="permission_not_granted_message">Можете выставить прарава на запись во внешнее хранилище в настройках приложений</string>
+    <string name="set_image_url_message">Укажите url картинки</string>
+    <string name="download_image_title">Загрузка картинки</string>
+    <string name="picture">Картинка</string>
+    <string name="image_downloaded">Картинка %s загружена</string>
+</resources>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.shumilov.vladislav.writetodiskwithpermission.MainActivity">
+
+    <EditText
+        android:id="@+id/evImageUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/enter_url_hint"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btnUploadImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/upload_image"/>
+
+    <Button
+        android:id="@+id/btnShowImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/show_image"
+        android:enabled="false"/>
+
+    <ImageView
+        android:id="@+id/ivPicture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:src="@drawable/star_trek_originial_cast"/>
+
+</LinearLayout>
