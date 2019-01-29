@@ -6,6 +6,7 @@ public class Image extends Observable {
 
     private String mUrl;
     private String mName;
+    private String mFolder;
     private Long mRequestId;
     private Long mResultId;
 
@@ -46,5 +47,17 @@ public class Image extends Observable {
 
     public void setResultId(Long resultId) {
         mResultId = resultId;
+    }
+
+    public String getFolder() {
+        return mFolder;
+    }
+
+    public void setFolder(String folder) {
+        mFolder = folder;
+    }
+
+    public String getFullPath() {
+        return mFolder + "/" + mName;
     }
 }

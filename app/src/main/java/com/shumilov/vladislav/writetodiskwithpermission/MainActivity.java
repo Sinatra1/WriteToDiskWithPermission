@@ -10,7 +10,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -30,6 +33,7 @@ import java.util.Observer;
 public class MainActivity extends AppCompatActivity implements Observer {
 
     private static final int WRITE_EXTERNAL_REQUEST_CODE = 123;
+    private static final String IS_SHOWN_IMAGE_KEY = "IS_SHOWN_IMAGE_KEY";
 
     private EditText mImageUrlEditView;
     private Button mDownloadImageButton;
@@ -40,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements Observer {
     private Image mImage = new Image();
     private boolean mBound = false;
     private Handler mHandler = new Handler();
+    private boolean mIsShownImage = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +84,22 @@ public class MainActivity extends AppCompatActivity implements Observer {
         unregisterReceiver(mOnCompleteDownloadImage);
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putBoolean(IS_SHOWN_IMAGE_KEY, mIsShownImage);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+
+        if (savedInstanceState != null) {
+            mIsShownImage = savedInstanceState.getBoolean(IS_SHOWN_IMAGE_KEY);
+        }
+    }
+
     private void initWidgets() {
         mImageUrlEditView = findViewById(R.id.evImageUrl);
         mDownloadImageButton = findViewById(R.id.btnDownloadImage);
@@ -95,6 +116,24 @@ public class MainActivity extends AppCompatActivity implements Observer {
                 downloadPicture();
             }
         });
+
+        mShowImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showImage();
+            }
+        });
+    }
+
+    private void showImage() {
+        mIsShownImage = true;
+        
+        String imagePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + mImage.getFullPath();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+        Bitmap mBitmap = BitmapFactory.decodeFile(imagePath, options);
+
+        mPictureImageView.setImageBitmap(mBitmap);
     }
 
     private void downloadPicture() {
@@ -175,6 +214,10 @@ public class MainActivity extends AppCompatActivity implements Observer {
             mBound = true;
 
             onImageChanged();
+
+            if (mIsShownImage) {
+                showImage();
+            }
         }
 
         @Override
