@@ -1,8 +1,5 @@
 package com.shumilov.vladislav.writetodiskwithpermission;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
 import java.util.Observable;
 
 public class Image extends Observable {
@@ -10,6 +7,7 @@ public class Image extends Observable {
     private String mUrl;
     private String mName;
     private Long mRequestId;
+    private Long mResultId;
 
     public Image() {
 
@@ -40,5 +38,13 @@ public class Image extends Observable {
     public void setRequestId(Long requestId) {
         mRequestId = requestId;
         setChanged();
+    }
+
+    public Long getResultId() {
+        return mResultId;
+    }
+
+    public void setResultId(Long resultId) {
+        mResultId = resultId;
     }
 }

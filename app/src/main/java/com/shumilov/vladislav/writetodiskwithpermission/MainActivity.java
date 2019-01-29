@@ -13,7 +13,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.PersistableBundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -31,15 +30,11 @@ import java.util.Observer;
 public class MainActivity extends AppCompatActivity implements Observer {
 
     private static final int WRITE_EXTERNAL_REQUEST_CODE = 123;
-    private static final String IMAGE_KEY = "IMAGE_KEY";
-    private static final String DOWNLOAD_IMAGE_REF_ID = "DOWNLOAD_IMAGE_REF_ID";
 
     private EditText mImageUrlEditView;
     private Button mDownloadImageButton;
     private Button mShowImageButton;
     private ImageView mPictureImageView;
-
-    private Long mDownloadedImageRefId;
 
     private ImageService mImageService;
     private Image mImage = new Image();
@@ -84,26 +79,6 @@ public class MainActivity extends AppCompatActivity implements Observer {
         unregisterReceiver(mOnCompleteDownloadImage);
     }
 
-    @Override
-    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
-        super.onSaveInstanceState(outState, outPersistentState);
-
-        outState.putLong(DOWNLOAD_IMAGE_REF_ID, mDownloadedImageRefId);
-    }
-
-    @Override
-    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-
-        if (savedInstanceState == null) {
-            return;
-        }
-
-        mDownloadedImageRefId = savedInstanceState.getLong(DOWNLOAD_IMAGE_REF_ID);
-
-        onImageChanged();
-    }
-
     private void initWidgets() {
         mImageUrlEditView = findViewById(R.id.evImageUrl);
         mDownloadImageButton = findViewById(R.id.btnDownloadImage);
@@ -115,6 +90,7 @@ public class MainActivity extends AppCompatActivity implements Observer {
         mDownloadImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                mDownloadImageButton.setEnabled(false);
                 mShowImageButton.setEnabled(false);
                 downloadPicture();
             }
@@ -178,10 +154,11 @@ public class MainActivity extends AppCompatActivity implements Observer {
     BroadcastReceiver mOnCompleteDownloadImage = new BroadcastReceiver() {
 
         public void onReceive(Context ctxt, Intent intent) {
-            mDownloadedImageRefId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+            mImage.setResultId(intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1));
 
-            if (mImage.getRequestId() != null && mImage.getRequestId().equals(mDownloadedImageRefId)) {
+            if (mImage.getRequestId() != null && mImage.getRequestId().equals(mImage.getResultId())) {
                 onImageChanged();
+
                 Toast.makeText(MainActivity.this, getString(R.string.image_downloaded, mImage.getName()), Toast.LENGTH_LONG).show();
             }
         }
@@ -196,6 +173,8 @@ public class MainActivity extends AppCompatActivity implements Observer {
             mImage.addObserver(MainActivity.this);
             mDownloadImageButton.setEnabled(true);
             mBound = true;
+
+            onImageChanged();
         }
 
         @Override
@@ -214,9 +193,14 @@ public class MainActivity extends AppCompatActivity implements Observer {
     }
 
     private void onImageChanged() {
-        if (mImage.getRequestId() != null && mImage.getRequestId().equals(mDownloadedImageRefId)) {
+        if (mImage.getRequestId() != null && mImage.getRequestId().equals(mImage.getResultId())) {
+            mDownloadImageButton.setEnabled(true);
             mShowImageButton.setEnabled(true);
             return;
+        }
+
+        if (mImage.getRequestId() != null) {
+            mDownloadImageButton.setEnabled(false);
         }
 
         mShowImageButton.setEnabled(false);
